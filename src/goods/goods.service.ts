@@ -2433,6 +2433,7 @@ async exportFullBackup(res: any) {
   const goods = await this.prisma.goods.findMany({
     include: {
       unit: true,
+      photos: true,
       location: true,
       pdiRecords: true,
       repairs: true,
@@ -2560,13 +2561,42 @@ async exportFullBackup(res: any) {
   archive.append(excelBuffer, { name: 'YARD-DATA.xlsx' })
 
   // =========================
-  // ADD PHOTOS FOLDER
+  // ADD PHOTOS FOLDER LOCAL
   // =========================
-  const uploadPath = path.join(process.cwd(), 'uploads')
+  // const uploadPath = path.join(process.cwd(), 'uploads')
 
-  if (fs.existsSync(uploadPath)) {
-    archive.directory(uploadPath, 'photos')
+  // if (fs.existsSync(uploadPath)) {
+  //   archive.directory(uploadPath, 'photos')
+  // }
+
+  // =========================
+// ADD PHOTOS FROM CLOUDINARY
+// =========================
+
+for (const g of goods) {
+  for (const photo of g.photos ?? []) {
+    try {
+      const response = await axios.get(photo.url, {
+        responseType: 'arraybuffer',
+      })
+
+      const imageBuffer = Buffer.from(response.data, 'binary')
+
+      // ambil nama file dari URL
+      const filename =
+        photo.url.split('/').pop() || `photo-${Date.now()}.jpg`
+
+      // optional: group per chassis
+      const folderName = g.unit?.chassisNumber || 'unknown'
+
+      archive.append(imageBuffer, {
+        name: `photos/${folderName}/${filename}`,
+      })
+    } catch (err) {
+      console.error('Failed download photo:', photo.url)
+    }
   }
+}
 
   await archive.finalize()
 }
