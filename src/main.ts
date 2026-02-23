@@ -22,8 +22,13 @@ async function bootstrap() {
   //   console.log('Admin created: admin@yard.com / admin123')
   // }
 
+const allowedOrigins: string[] = ['http://localhost:3000']
+if (process.env.FRONTEND_URL){
+  allowedOrigins.push(process.env.FRONTEND_URL)
+}
+
   app.enableCors({
-    origin:true,
+    origin:allowedOrigins,
     credentials:true,
     
   })
