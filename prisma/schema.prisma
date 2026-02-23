@@ -1,0 +1,245 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  STAFF
+  PDI
+  GLOBAL
+}
+
+enum GoodsStatus {
+  INCOMING
+  REPAIR
+  PDI
+  READY
+  DELIVERED
+  RECEIVED
+  COMPLETED
+}
+
+model User {
+  id        String        @id @default(uuid())
+  name      String
+  email     String        @unique
+  password  String
+  role      Role
+  isActive  Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  logs      ActivityLog[]
+}
+
+model ImportBatch {
+  id        String @id @default(uuid())
+  fileName  String
+  totalRows Int
+
+  imported  Int @default(0)
+  duplicate Int @default(0)
+  failed    Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  unitMasters UnitMaster[] // ⬅️ WAJIB ADA
+}
+
+model UnitMaster {
+  id              String       @id @default(uuid())
+  blNumber        String
+  containerNumber String?
+  dateYard        DateTime?
+  dateETA         DateTime?
+  vehicleType     String?
+  brand           String?
+  engineNumber    String       @unique
+  chassisNumber   String       @unique
+  color           String?
+  importBatchId   String?
+  importBatch     ImportBatch? @relation(fields: [importBatchId], references: [id])
+  goods           Goods?
+  createdAt       DateTime     @default(now())
+}
+
+model Goods {
+  id             String          @id @default(uuid())
+  qrCode         String          @unique
+  unitId         String          @unique
+  unit           UnitMaster      @relation(fields: [unitId], references: [id])
+  currentStatus  GoodsStatus     @default(INCOMING)
+  locationId String? @unique
+  location   Location? @relation(fields: [locationId], references: [id])
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  conditionCheck ConditionCheck?
+  repairs        RepairRecord[]
+  pdiRecords     PDIRecord[]
+  deliveryItems  DeliveryItem[]
+  bast           BASTRecord?
+  photos         Photo[]
+  logs           ActivityLog[]
+  incomingDate   DateTime?
+  incomingForm   IncomingForm?
+
+   // 🔐 Delivery Security per unit
+  deliveryToken      String?   @unique
+  verificationCode   String?
+  tokenExpiredAt     DateTime?
+  attemptCount       Int       @default(0)
+  isLocked           Boolean   @default(false)
+}
+
+model ConditionCheck {
+  id        String   @id @default(uuid())
+  goodsId   String   @unique
+  goods     Goods    @relation(fields: [goodsId], references: [id])
+  checklist Json
+  result    String
+  createdAt DateTime @default(now())
+}
+
+model RepairRecord {
+  id          String    @id @default(uuid())
+  goodsId     String
+  goods       Goods     @relation(fields: [goodsId], references: [id])
+  startDate   DateTime
+  endDate     DateTime?
+  result      String?
+  formData    Json?     // 🆕 after repair checklist
+  isCompleted Boolean    @default(false)  // 🆕
+  createdAt   DateTime  @default(now())
+}
+
+
+model PDIRecord {
+  id        String   @id @default(uuid())
+  goodsId   String
+  pdiDate   DateTime @default(now())
+  stickerDate DateTime?
+
+  technicianName String
+  supervisorName String
+
+  goods Goods @relation(fields: [goodsId], references: [id])
+
+  items PDIItem[]
+
+  createdAt DateTime @default(now())
+}
+model PDIItem {
+  id       String @id @default(uuid())
+  recordId String
+
+  category String
+  itemName String
+  status   String   // OK / NG
+  note     String?
+
+  record PDIRecord @relation(fields: [recordId], references: [id])
+}
+
+model Delivery {
+  id               String   @id @default(uuid())
+  suratJalanNumber String   @unique
+
+  driverName       String
+  driverPhone      String
+  jenisPengiriman  String
+  catatan          String?
+
+
+  deliveredAt      DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime @default(now())
+
+  items            DeliveryItem[]
+}
+
+
+
+model DeliveryItem {
+  id                String  @id @default(uuid())
+
+  deliveryId        String
+  delivery          Delivery @relation(fields: [deliveryId], references: [id])
+
+  goodsId           String
+  goods             Goods @relation(fields: [goodsId], references: [id])
+
+  noPol             String
+  tujuanPengiriman  String
+}
+
+
+
+model BASTRecord {
+  id           String    @id @default(uuid())
+  goodsId      String    @unique
+  goods        Goods     @relation(fields: [goodsId], references: [id])
+  receiverName String
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+model Photo {
+  id        String   @id @default(uuid())
+  goodsId   String
+  goods     Goods    @relation(fields: [goodsId], references: [id])
+  process   String
+  url       String
+  publicId  String?
+  createdAt DateTime @default(now())
+}
+
+model ActivityLog {
+  id         String   @id @default(uuid())
+  goodsId    String?
+  goods      Goods?   @relation(fields: [goodsId], references: [id])
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  action     String
+  fromStatus String?
+  toStatus   String?
+  createdAt  DateTime @default(now())
+}
+
+model Location {
+  id        String   @id @default(uuid())
+  zone      String   // A, B, C, D, PDI
+  row       Int      // 1 - 22
+  lane      Int      // 1 - 3
+  isActive  Boolean  @default(true)
+
+  goods     Goods?
+  createdAt DateTime @default(now())
+
+  @@unique([zone, row, lane])
+}
+
+model IncomingForm {
+  id        String   @id @default(uuid())
+  goodsId   String   @unique
+  hasIssue  Boolean
+  createdAt DateTime @default(now())
+
+  goods     Goods    @relation(fields: [goodsId], references: [id])
+  items     IncomingInspectionItem[]
+}
+
+model IncomingInspectionItem {
+  id        String   @id @default(uuid())
+  formId    String
+  category  String
+  itemName  String
+  status    String   // OK / NOT_OK
+  source    String?
+  note      String?
+  createdAt DateTime @default(now())
+
+  form      IncomingForm @relation(fields: [formId], references: [id])
+}
