@@ -524,6 +524,12 @@ async generateMultipleQR(ids: string[]) {
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica)
 
+
+  function formatDate(date:Date){
+    return date.toISOString().replace('T','').slice(0,19)
+  }
+  
+
   for (const g of goodsList) {
     const page = pdfDoc.addPage([595, 842]) // A4
     const { width, height } = page.getSize()
@@ -620,7 +626,7 @@ async generateMultipleQR(ids: string[]) {
       font: fontBold,
       color: rgb(0.4, 0.4, 0.4),
     })
-    page.drawText(g.incomingDate?.toLocaleDateString("YYYY-MM-DD hh:mm:ss") ? String(g.incomingDate.toLocaleDateString("YYYY-MM-DD hh:mm:ss")) : '-', {
+    page.drawText(g.incomingDate ? formatDate(g.incomingDate) : '-', {
       x: cardX + 30,
       y: infoYStart - 135,
       size: 14,
