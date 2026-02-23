@@ -16,6 +16,7 @@ import * as path from 'path'
 import * as fs from 'fs'
 import { PDFDocument as PDFDocument1, StandardFonts, rgb } from 'pdf-lib'
 import cloudinary from '../config/cloudinary'
+import axios from 'axios'
 
 
 @Injectable()
@@ -1613,44 +1614,100 @@ async generateIncomingPdf(goodsId: string) {
     let photoX = 50;
     let photoY = doc.y + 10;
 
-    for (let i = 0; i < incomingPhotos.length; i++) {
-      const photo = incomingPhotos[i];
-      const filename = photo.url.split('/').pop();
-      const imagePath = path.join(process.cwd(), 'uploads', 'incoming', filename || '');
 
-      if (fs.existsSync(imagePath)) {
-        // Draw Frame
-        doc.rect(photoX, photoY, photoWidth, photoHeight).stroke('#e2e8f0');
+    //LOOP UNTUK LOCAL 
+    // for (let i = 0; i < incomingPhotos.length; i++) {
+    //   const photo = incomingPhotos[i];
+
+    //   //HIDUPKAN JIKA LOCAL
+    //    const filename = photo.url.split('/').pop();
+    //    const imagePath = path.join(process.cwd(), 'uploads', 'incoming', filename || '');
+
+      
+
+    //   if (fs.existsSync(imagePath)) {
+    //     // Draw Frame
+    //     doc.rect(photoX, photoY, photoWidth, photoHeight).stroke('#e2e8f0');
         
-        try {
-          doc.image(imagePath, photoX + 5, photoY + 5, {
-            fit: [photoWidth - 10, photoHeight - 10],
-            align: 'center',
-            valign: 'center'
-          });
-        } catch (e) {
-          doc.fontSize(8).text('Error loading image', photoX + 10, photoY + 10);
-        }
+    //     try {
+    //       doc.image(imagePath, photoX + 5, photoY + 5, {
+    //         fit: [photoWidth - 10, photoHeight - 10],
+    //         align: 'center',
+    //         valign: 'center'
+    //       });
+    //     } catch (e) {
+    //       doc.fontSize(8).text('Error loading image', photoX + 10, photoY + 10);
+    //     }
 
-        // Label Foto
-        doc.fontSize(7).fillColor('#94a3b8').text(`Evidence Image ${i + 1}`, photoX, photoY + photoHeight + 5);
+    //     // Label Foto
+    //     doc.fontSize(7).fillColor('#94a3b8').text(`Evidence Image ${i + 1}`, photoX, photoY + photoHeight + 5);
 
-        // Update X & Y for Grid
-        if ((i + 1) % 2 === 0) {
-          photoX = 50;
-          photoY += photoHeight + 40;
-        } else {
-          photoX += photoWidth + gap;
-        }
+    //     // Update X & Y for Grid
+    //     if ((i + 1) % 2 === 0) {
+    //       photoX = 50;
+    //       photoY += photoHeight + 40;
+    //     } else {
+    //       photoX += photoWidth + gap;
+    //     }
 
-        // Page break if photos exceed page
-        if (photoY > 700) {
-          doc.addPage();
-          photoY = 50;
-          photoX = 50;
-        }
-      }
-    }
+    //     // Page break if photos exceed page
+    //     if (photoY > 700) {
+    //       doc.addPage();
+    //       photoY = 50;
+    //       photoX = 50;
+    //     }
+    //   }
+    // }
+
+
+
+
+    //LOOP GAMBAR UNTUK CLOUDINARY
+    for (let i = 0; i < incomingPhotos.length; i++) {
+  const photo = incomingPhotos[i];
+  const imageUrl = photo.url;
+
+  // Draw Frame
+  doc.rect(photoX, photoY, photoWidth, photoHeight).stroke('#e2e8f0');
+
+  try {
+    const response = await axios.get(imageUrl, {
+      responseType: 'arraybuffer',
+    });
+
+    const imageBuffer = Buffer.from(response.data, 'binary');
+
+    doc.image(imageBuffer, photoX + 5, photoY + 5, {
+      fit: [photoWidth - 10, photoHeight - 10],
+      align: 'center',
+      valign: 'center',
+    });
+  } catch (e) {
+    console.error('Error loading image:', e);
+    doc.fontSize(8).text('Error loading image', photoX + 10, photoY + 10);
+  }
+
+  // Label Foto
+  doc
+    .fontSize(7)
+    .fillColor('#94a3b8')
+    .text(`Evidence Image ${i + 1}`, photoX, photoY + photoHeight + 5);
+
+  // Grid positioning
+  if ((i + 1) % 2 === 0) {
+    photoX = 50;
+    photoY += photoHeight + 40;
+  } else {
+    photoX += photoWidth + gap;
+  }
+
+  // Page break
+  if (photoY > 700) {
+    doc.addPage();
+    photoY = 50;
+    photoX = 50;
+  }
+}
   }
 
   // Footer
@@ -2049,30 +2106,77 @@ async generatePDIPDF(goodsId: string): Promise<Buffer> {
 
     let x = 50, y = 110;
     const photoWidth = 230, photoHeight = 160, gap = 20;
+    //HIDUPKAN JIKA GAMBAR LOCAL SERVER
+    // for (let i = 0; i < goods.photos.length; i++) {
+    //   const photo = goods.photos[i];
+    //   const imagePath = path.join(process.cwd(), photo.url.replace(/^\//, ''));
+    //   if (!fs.existsSync(imagePath)) continue;
 
+    //   if (y + photoHeight > bottomLimit) {
+    //     doc.addPage();
+    //     y = 70; x = 50;
+    //   }
+
+    //   doc.rect(x, y, photoWidth, photoHeight).stroke('#e2e8f0');
+    //   try {
+    //     doc.image(imagePath, x + 5, y + 5, {
+    //       fit: [photoWidth - 10, photoHeight - 10],
+    //       align: 'center', valign: 'center'
+    //     });
+    //   } catch (err) {}
+
+    //   doc.fontSize(7).fillColor('#64748b').text(`${photo.process} - #${i + 1}`, x, y + photoHeight + 5);
+
+    //   x += photoWidth + gap;
+    //   if (x > 450) { x = 50; y += photoHeight + 40; }
+    // }
+
+    //INI GAMBAR UNTUK CLOUDINARY
     for (let i = 0; i < goods.photos.length; i++) {
-      const photo = goods.photos[i];
-      const imagePath = path.join(process.cwd(), photo.url.replace(/^\//, ''));
-      if (!fs.existsSync(imagePath)) continue;
+  const photo = goods.photos[i];
+  const imageUrl = photo.url;
 
-      if (y + photoHeight > bottomLimit) {
-        doc.addPage();
-        y = 70; x = 50;
-      }
+  if (y + photoHeight > bottomLimit) {
+    doc.addPage();
+    y = 70;
+    x = 50;
+  }
 
-      doc.rect(x, y, photoWidth, photoHeight).stroke('#e2e8f0');
-      try {
-        doc.image(imagePath, x + 5, y + 5, {
-          fit: [photoWidth - 10, photoHeight - 10],
-          align: 'center', valign: 'center'
-        });
-      } catch (err) {}
+  // Draw Frame
+  doc.rect(x, y, photoWidth, photoHeight).stroke('#e2e8f0');
 
-      doc.fontSize(7).fillColor('#64748b').text(`${photo.process} - #${i + 1}`, x, y + photoHeight + 5);
+  try {
+    const response = await axios.get(imageUrl, {
+      responseType: 'arraybuffer',
+    });
 
-      x += photoWidth + gap;
-      if (x > 450) { x = 50; y += photoHeight + 40; }
-    }
+    const imageBuffer = Buffer.from(response.data, 'binary');
+
+    doc.image(imageBuffer, x + 5, y + 5, {
+      fit: [photoWidth - 10, photoHeight - 10],
+      align: 'center',
+      valign: 'center',
+    });
+  } catch (err) {
+    console.error('Failed load image:', err);
+    doc
+      .fontSize(8)
+      .fillColor('red')
+      .text('Image load error', x + 10, y + 10);
+  }
+
+  doc
+    .fontSize(7)
+    .fillColor('#64748b')
+    .text(`${photo.process} - #${i + 1}`, x, y + photoHeight + 5);
+
+  x += photoWidth + gap;
+
+  if (x > 450) {
+    x = 50;
+    y += photoHeight + 40;
+  }
+}
   }
 
   // ======================================================
@@ -2607,30 +2711,78 @@ async generateRepairPDF(goodsId: string): Promise<Buffer> {
     let x = 50, y = 90;
     const photoWidth = 230, photoHeight = 160, gap = 20;
 
+    //GAMBAR KHUSUS LOKAL SERVER
+    // for (let i = 0; i < goods.photos.length; i++) {
+    //   const photo = goods.photos[i];
+    //   const imagePath = path.join(process.cwd(), photo.url.replace(/^\//, ''));
+
+    //   if (fs.existsSync(imagePath)) {
+    //     if (y + photoHeight > bottomLimit) {
+    //       doc.addPage();
+    //       y = 50; x = 50;
+    //     }
+
+    //     doc.rect(x, y, photoWidth, photoHeight).stroke('#cbd5e1');
+    //     try {
+    //       doc.image(imagePath, x + 5, y + 5, {
+    //         fit: [photoWidth - 10, photoHeight - 10],
+    //         align: 'center', valign: 'center'
+    //       });
+    //     } catch (e) {}
+
+    //     doc.fontSize(7).fillColor('#64748b').text(`REPAIR EVIDENCE #${i + 1}`, x, y + photoHeight + 5);
+
+    //     x += photoWidth + gap;
+    //     if (x > 450) { x = 50; y += photoHeight + 40; }
+    //   }
+    // }
+
+    //GAMBAR LANGSUNG DARI CLOUDINARY
     for (let i = 0; i < goods.photos.length; i++) {
-      const photo = goods.photos[i];
-      const imagePath = path.join(process.cwd(), photo.url.replace(/^\//, ''));
+  const photo = goods.photos[i];
+  const imageUrl = photo.url;
 
-      if (fs.existsSync(imagePath)) {
-        if (y + photoHeight > bottomLimit) {
-          doc.addPage();
-          y = 50; x = 50;
-        }
+  if (y + photoHeight > bottomLimit) {
+    doc.addPage();
+    y = 50;
+    x = 50;
+  }
 
-        doc.rect(x, y, photoWidth, photoHeight).stroke('#cbd5e1');
-        try {
-          doc.image(imagePath, x + 5, y + 5, {
-            fit: [photoWidth - 10, photoHeight - 10],
-            align: 'center', valign: 'center'
-          });
-        } catch (e) {}
+  // Draw Frame
+  doc.rect(x, y, photoWidth, photoHeight).stroke('#cbd5e1');
 
-        doc.fontSize(7).fillColor('#64748b').text(`REPAIR EVIDENCE #${i + 1}`, x, y + photoHeight + 5);
+  try {
+    const response = await axios.get(imageUrl, {
+      responseType: 'arraybuffer',
+    });
 
-        x += photoWidth + gap;
-        if (x > 450) { x = 50; y += photoHeight + 40; }
-      }
-    }
+    const imageBuffer = Buffer.from(response.data, 'binary');
+
+    doc.image(imageBuffer, x + 5, y + 5, {
+      fit: [photoWidth - 10, photoHeight - 10],
+      align: 'center',
+      valign: 'center',
+    });
+  } catch (e) {
+    console.error('Repair image load error:', e);
+    doc
+      .fontSize(8)
+      .fillColor('red')
+      .text('Image load error', x + 10, y + 10);
+  }
+
+  doc
+    .fontSize(7)
+    .fillColor('#64748b')
+    .text(`REPAIR EVIDENCE #${i + 1}`, x, y + photoHeight + 5);
+
+  x += photoWidth + gap;
+
+  if (x > 450) {
+    x = 50;
+    y += photoHeight + 40;
+  }
+}
   }
 
   // ==========================================
