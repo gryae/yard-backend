@@ -1094,6 +1094,7 @@ async getHeatmap() {
         brand: loc.goods.unit.brand,
         engineNumber: loc.goods.unit.engineNumber,
         chassisNumber: loc.goods.unit.chassisNumber,
+        blNumber: loc.goods.unit.blNumber,
       },
     }
   })
