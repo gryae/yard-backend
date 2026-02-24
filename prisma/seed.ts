@@ -81,7 +81,7 @@ async function main() {
       id: '1',
       name: 'Admin',
       email: 'admin@yard.com',
-      password: 'admin123',
+      password: '$2a$12$R9VIXuqNYjcWv3VYfaY7EON0kMRJKsgDD.UVf6Bx0wx2.0IdD/aeK',
       role: 'ADMIN',
     },
   })
